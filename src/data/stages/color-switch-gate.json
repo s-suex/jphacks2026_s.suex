@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "id": "color-switch-gate",
+  "number": 4,
+  "name": "同じ色のスイッチ",
+  "start": { "x": 2, "y": 7, "facing": "right" },
+  "obstacles": [
+    { "x": 12, "y": 1, "width": 1, "height": 3 },
+    { "x": 12, "y": 11, "width": 1, "height": 4 }
+  ],
+  "items": [
+    { "type": "skillPotion", "x": 3, "y": 11 },
+    { "type": "lifePotion", "x": 18, "y": 7 }
+  ],
+  "blocks": [
+    { "id": "red-crate", "name": "赤箱", "kind": "colored", "x": 4, "y": 7, "color": "#ff5e68" },
+    { "id": "normal-crate", "name": "木箱", "kind": "normal", "x": 5, "y": 5, "color": "#b57d50" }
+  ],
+  "colorSwitches": [
+    { "x": 8, "y": 7, "color": "#ff5e68" }
+  ],
+  "colorWalls": [
+    { "x": 12, "y": 4, "width": 1, "height": 7, "color": "#ff5e68" }
+  ],
+  "lasers": [],
+  "magma": [],
+  "goal": { "x": 21, "y": 7 },
+  "goalBlock": null,
+  "shortcutGate": null,
+  "hint": "赤箱をCtrl+Cでコピーし、同じ色のスイッチの前でCtrl+V"
+}

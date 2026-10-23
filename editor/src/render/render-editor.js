@@ -129,19 +129,138 @@ function drawGoal(ctx, goal) {
   ctx.restore();
 }
 
+function drawColorWalls(ctx, colorWalls) {
+  for (const wall of colorWalls) {
+    const x = wall.x * TILE_SIZE;
+    const y = wall.y * TILE_SIZE;
+    ctx.save();
+    ctx.fillStyle = wall.color;
+    ctx.globalAlpha = 0.42;
+    ctx.fillRect(x + 3, y + 3, TILE_SIZE - 6, TILE_SIZE - 6);
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = wall.color;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x + 4, y + 4, TILE_SIZE - 8, TILE_SIZE - 8);
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+    ctx.lineWidth = 1;
+    for (let offset = -TILE_SIZE; offset < TILE_SIZE; offset += 8) {
+      ctx.beginPath();
+      ctx.moveTo(x + offset, y + TILE_SIZE);
+      ctx.lineTo(x + offset + TILE_SIZE, y);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+}
+
+function drawColorSwitches(ctx, colorSwitches) {
+  for (const colorSwitch of colorSwitches) {
+    const x = (colorSwitch.x + 0.5) * TILE_SIZE;
+    const y = (colorSwitch.y + 0.5) * TILE_SIZE;
+    ctx.save();
+    ctx.fillStyle = 'rgba(8, 16, 22, 0.6)';
+    ctx.fillRect(colorSwitch.x * TILE_SIZE + 4, colorSwitch.y * TILE_SIZE + 4, TILE_SIZE - 8, TILE_SIZE - 8);
+    ctx.shadowColor = colorSwitch.color;
+    ctx.shadowBlur = 10;
+    ctx.beginPath();
+    ctx.arc(x, y, 11, 0, Math.PI * 2);
+    ctx.strokeStyle = colorSwitch.color;
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.beginPath();
+    ctx.arc(x, y, 4, 0, Math.PI * 2);
+    ctx.fillStyle = colorSwitch.color;
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+function drawMagma(ctx, magma) {
+  for (const tile of magma) {
+    const x = tile.x * TILE_SIZE;
+    const y = tile.y * TILE_SIZE;
+    ctx.save();
+    ctx.fillStyle = '#e0532f';
+    ctx.fillRect(x + 2, y + 2, TILE_SIZE - 4, TILE_SIZE - 4);
+    ctx.fillStyle = 'rgba(255, 196, 92, 0.55)';
+    for (let offset = 8; offset < TILE_SIZE - 4; offset += 10) {
+      ctx.beginPath();
+      ctx.arc(x + offset, y + TILE_SIZE - 10, 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.strokeStyle = '#ffb347';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x + 3, y + 3, TILE_SIZE - 6, TILE_SIZE - 6);
+    ctx.restore();
+  }
+}
+
+function drawLasers(ctx, lasers) {
+  for (const laser of lasers) {
+    const vector = FACING_VECTORS[laser.direction] ?? FACING_VECTORS.right;
+    const centerX = (laser.x + 0.5) * TILE_SIZE;
+    const centerY = (laser.y + 0.5) * TILE_SIZE;
+    const endX = centerX + vector.x * laser.length * TILE_SIZE;
+    const endY = centerY + vector.y * laser.length * TILE_SIZE;
+
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255, 94, 104, 0.65)';
+    ctx.lineWidth = 4;
+    ctx.setLineDash([7, 5]);
+    ctx.beginPath();
+    ctx.moveTo(centerX, centerY);
+    ctx.lineTo(endX, endY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.fillStyle = '#5b2b36';
+    ctx.fillRect(laser.x * TILE_SIZE + 5, laser.y * TILE_SIZE + 5, TILE_SIZE - 10, TILE_SIZE - 10);
+    ctx.strokeStyle = '#ff5e68';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(laser.x * TILE_SIZE + 6, laser.y * TILE_SIZE + 6, TILE_SIZE - 12, TILE_SIZE - 12);
+    ctx.fillStyle = '#ff8b93';
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#ff5e68';
+    ctx.beginPath();
+    ctx.moveTo(centerX + vector.x * 12, centerY + vector.y * 12);
+    ctx.lineTo(centerX - vector.y * 6 - vector.x * 6, centerY + vector.x * 6 - vector.y * 6);
+    ctx.lineTo(centerX + vector.y * 6 - vector.x * 6, centerY - vector.x * 6 - vector.y * 6);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
 function drawBlocks(ctx, blocks) {
   for (const block of blocks) {
     const x = block.x * TILE_SIZE;
     const y = block.y * TILE_SIZE;
+    const colored = block.kind === 'colored';
+    ctx.save();
+    if (colored) {
+      ctx.shadowColor = block.color;
+      ctx.shadowBlur = 10;
+    }
     ctx.fillStyle = block.color;
     ctx.fillRect(x + 4, y + 4, TILE_SIZE - 8, TILE_SIZE - 8);
-    ctx.strokeStyle = '#e8d1ae';
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = colored ? '#ffffff' : '#e8d1ae';
     ctx.lineWidth = 2;
     ctx.strokeRect(x + 7, y + 7, TILE_SIZE - 14, TILE_SIZE - 14);
+    if (colored) {
+      ctx.beginPath();
+      ctx.arc(x + TILE_SIZE - 10, y + 10, 3, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+    }
     ctx.fillStyle = '#fff7e9';
     ctx.font = '700 11px system-ui, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText(block.name, x + TILE_SIZE / 2, y + TILE_SIZE / 2 + 4, TILE_SIZE - 10);
+    ctx.restore();
   }
 }
 
@@ -257,7 +376,11 @@ export function renderEditor(canvas, store, hover) {
   drawGoalSocket(ctx, model.goalBlock);
   drawGate(ctx, model.shortcutGate);
   drawWalls(ctx, model.walls);
+  drawColorWalls(ctx, model.colorWalls);
+  drawMagma(ctx, model.magma);
   drawGoal(ctx, model.goal);
+  drawColorSwitches(ctx, model.colorSwitches);
+  drawLasers(ctx, model.lasers);
   drawBlocks(ctx, model.blocks);
   drawItems(ctx, model.items);
   drawStart(ctx, model.start);

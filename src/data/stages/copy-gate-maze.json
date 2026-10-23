@@ -24,8 +24,12 @@
     { "type": "lifePotion", "x": 18, "y": 12 }
   ],
   "blocks": [
-    { "id": "stage-2-crate", "name": "複製キー箱", "x": 3, "y": 13, "color": "#b57d50" }
+    { "id": "stage-2-crate", "name": "複製キー箱", "kind": "normal", "x": 3, "y": 13, "color": "#b57d50" }
   ],
+  "colorSwitches": [],
+  "colorWalls": [],
+  "lasers": [],
+  "magma": [],
   "goal": { "x": 21, "y": 2 },
   "goalBlock": null,
   "shortcutGate": { "x": 12, "y": 2 },

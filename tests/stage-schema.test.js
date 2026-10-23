@@ -19,6 +19,8 @@ function validEntries() {
   return [
     { file: 'crate-intro.json', stage: readStage('crate-intro.json') },
     { file: 'copy-gate-maze.json', stage: readStage('copy-gate-maze.json') },
+    { file: 'color-switch-gate.json', stage: readStage('color-switch-gate.json') },
+    { file: 'laser-magma-lab.json', stage: readStage('laser-magma-lab.json') },
   ];
 }
 
@@ -107,4 +109,87 @@ test('ステージ0件を検出する', () => {
   const result = validateStageCollection([]);
   assert.equal(result.ok, false);
   assert.ok(codes(result.errors).includes('E016'));
+});
+
+test('色つき木箱・カラースイッチ・カラー壁のステージはエラーにならない', () => {
+  const stage = readStage('color-switch-gate.json');
+  const result = validateStage(stage);
+  assert.equal(result.ok, true, JSON.stringify(result.errors));
+  assert.equal(result.warnings.length, 0, JSON.stringify(result.warnings));
+});
+
+test('カラー壁と固定壁の重複をE008で検出する', () => {
+  const stage = readStage('color-switch-gate.json');
+  stage.colorWalls[0].y = 2;
+
+  const result = validateStage(stage);
+  assert.equal(result.ok, false);
+  assert.ok(codes(result.errors).includes('E008'));
+});
+
+test('カラー要素の不正な色をE012で検出する', () => {
+  const stage = readStage('color-switch-gate.json');
+  stage.colorSwitches[0].color = 'red';
+
+  const result = validateStage(stage);
+  assert.equal(result.ok, false);
+  assert.ok(codes(result.errors).includes('E012'));
+});
+
+test('不正な木箱の種類を検出する', () => {
+  const stage = readStage('color-switch-gate.json');
+  stage.blocks[0].kind = 'rainbow';
+
+  const result = validateStage(stage);
+  assert.equal(result.ok, false);
+  assert.ok(codes(result.errors).includes('E001'));
+});
+
+test('レーザーとマグマのデモステージはエラーにならない', () => {
+  const stage = readStage('laser-magma-lab.json');
+  const result = validateStage(stage);
+  assert.equal(result.ok, true, JSON.stringify(result.errors));
+  assert.equal(result.warnings.length, 0, JSON.stringify(result.warnings));
+});
+
+test('レーザーの不正な向き・長さをE001で検出する', () => {
+  const stage = readStage('laser-magma-lab.json');
+  stage.lasers[0].direction = 'diagonal';
+  stage.lasers[0].length = 0;
+
+  const result = validateStage(stage);
+  assert.equal(result.ok, false);
+  assert.ok(codes(result.errors).includes('E001'));
+});
+
+test('配置可能範囲を超えるレーザーをE007で検出する', () => {
+  const stage = readStage('laser-magma-lab.json');
+  stage.lasers[0].x = 20;
+  stage.lasers[0].direction = 'right';
+  stage.lasers[0].length = 5;
+
+  const result = validateStage(stage);
+  assert.equal(result.ok, false);
+  assert.ok(codes(result.errors).includes('E007'));
+});
+
+test('レーザー発射装置と要素の重複をE008で検出する', () => {
+  const stage = readStage('laser-magma-lab.json');
+  stage.lasers[0].x = stage.blocks[0].x;
+  stage.lasers[0].y = stage.blocks[0].y;
+
+  const result = validateStage(stage);
+  assert.equal(result.ok, false);
+  assert.ok(codes(result.errors).includes('E008'));
+});
+
+test('マグマと足場用木箱がない場合の警告を出す', () => {
+  const stage = readStage('laser-magma-lab.json');
+  stage.blocks = stage.blocks.filter((block) => block.id !== 'magma-crate');
+  stage.blocks[0].id = 'colored-crate';
+  stage.blocks[0].kind = 'colored';
+  stage.blocks[0].color = '#ff5e68';
+
+  const result = validateStage(stage);
+  assert.ok(codes(result.warnings).includes('W014'));
 });

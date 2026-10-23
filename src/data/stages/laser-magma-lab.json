@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "id": "laser-magma-lab",
+  "number": 5,
+  "name": "レーザーとマグマ",
+  "start": { "x": 2, "y": 7, "facing": "right" },
+  "obstacles": [
+    { "x": 12, "y": 1, "width": 1, "height": 5 },
+    { "x": 12, "y": 9, "width": 1, "height": 5 }
+  ],
+  "items": [
+    { "type": "skillPotion", "x": 3, "y": 11 },
+    { "type": "lifePotion", "x": 20, "y": 4 }
+  ],
+  "blocks": [
+    { "id": "magma-crate", "name": "木箱", "kind": "normal", "x": 3, "y": 7, "color": "#b57d50" },
+    { "id": "laser-crate", "name": "木箱", "kind": "normal", "x": 15, "y": 7, "color": "#b57d50" }
+  ],
+  "colorSwitches": [],
+  "colorWalls": [],
+  "lasers": [
+    { "x": 17, "y": 3, "direction": "down", "length": 7 }
+  ],
+  "magma": [
+    { "x": 13, "y": 6 },
+    { "x": 13, "y": 7 },
+    { "x": 13, "y": 8 }
+  ],
+  "goal": { "x": 21, "y": 7 },
+  "goalBlock": null,
+  "shortcutGate": null,
+  "hint": "マグマには木箱を置いて渡り、レーザーは木箱で遮ろう"
+}

@@ -250,6 +250,13 @@ code {
   font-size: 11px;
 }
 
+.panel-note {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.55;
+}
+
 .shortcut-list div {
   display: grid;
   gap: 2px;

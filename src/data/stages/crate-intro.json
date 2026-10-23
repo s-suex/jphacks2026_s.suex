@@ -16,8 +16,12 @@
     { "type": "lifePotion", "x": 6, "y": 12 }
   ],
   "blocks": [
-    { "id": "stage-1-crate", "name": "木箱", "x": 3, "y": 7, "color": "#b57d50" }
+    { "id": "stage-1-crate", "name": "木箱", "kind": "normal", "x": 3, "y": 7, "color": "#b57d50" }
   ],
+  "colorSwitches": [],
+  "colorWalls": [],
+  "lasers": [],
+  "magma": [],
   "goal": { "x": 21, "y": 7 },
   "goalBlock": { "x": 18, "y": 7 },
   "shortcutGate": null,

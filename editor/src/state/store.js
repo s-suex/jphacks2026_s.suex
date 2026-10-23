@@ -1,6 +1,8 @@
 import { validateStage, isPlayableTile } from '@shortcut-dungeon/stage-schema';
 import {
   BLOCK_COLORS,
+  DEFAULT_LASER,
+  GIMMICK_COLORS,
   ITEM_LABELS,
   createBlankStage,
   entityAt,
@@ -23,6 +25,10 @@ function selectionKey(selection) {
   if (selection.kind === 'block') return `block:${selection.id}`;
   if (selection.kind === 'item') return `item:${selection.type}:${selection.x}:${selection.y}`;
   if (selection.kind === 'wall') return `wall:${selection.x}:${selection.y}`;
+  if (selection.kind === 'colorSwitch') return `colorSwitch:${selection.x}:${selection.y}`;
+  if (selection.kind === 'colorWall') return `colorWall:${selection.x}:${selection.y}`;
+  if (selection.kind === 'laser') return `laser:${selection.x}:${selection.y}`;
+  if (selection.kind === 'magma') return `magma:${selection.x}:${selection.y}`;
   return selection.kind;
 }
 
@@ -32,6 +38,7 @@ export default class EditorStore {
     this.tool = 'select';
     this.selection = null;
     this.preview = false;
+    this.paintColor = GIMMICK_COLORS[0];
     this.message = 'ツールを選び、キャンバスをクリックして配置します';
     this.history = [];
     this.future = [];
@@ -80,6 +87,12 @@ export default class EditorStore {
     this.message = tool === 'select'
       ? '要素を選択・ドラッグして移動できます'
       : 'クリックまたはドラッグで配置します。右クリックで削除';
+    this.emit();
+  }
+
+  setPaintColor(color) {
+    if (typeof color !== 'string' || color === this.paintColor) return;
+    this.paintColor = color;
     this.emit();
   }
 
@@ -183,7 +196,7 @@ export default class EditorStore {
       return;
     }
 
-    if (tool === 'block') {
+    if (tool === 'block' || tool === 'colorBlock') {
       const other = occupiedByOther(this.model, x, y, { kind: 'block' });
       if (other) {
         this.message = `${other}があるため木箱を置けません`;
@@ -192,16 +205,126 @@ export default class EditorStore {
       }
       this.pushHistory();
       const id = makeBlockId(this.model);
+      const colored = tool === 'colorBlock';
       const block = {
         id,
-        name: '木箱',
+        name: colored ? '色箱' : '木箱',
+        kind: colored ? 'colored' : 'normal',
         x,
         y,
-        color: BLOCK_COLORS[this.model.blocks.length % BLOCK_COLORS.length],
+        color: colored ? this.paintColor : BLOCK_COLORS[this.model.blocks.length % BLOCK_COLORS.length],
       };
       this.model.blocks.push(block);
       this.selection = { kind: 'block', id };
-      this.message = '木箱を配置しました';
+      this.message = colored ? '色つき木箱を配置しました' : '木箱を配置しました';
+      this.emit();
+      return;
+    }
+
+    if (tool === 'switch') {
+      const index = this.model.colorSwitches.findIndex((candidate) => candidate.x === x && candidate.y === y);
+      if (index !== -1) {
+        if (this.model.colorSwitches[index].color === this.paintColor) {
+          this.selection = { kind: 'colorSwitch', x, y };
+          this.emit();
+          return;
+        }
+        this.pushHistory();
+        this.model.colorSwitches[index].color = this.paintColor;
+        this.selection = { kind: 'colorSwitch', x, y };
+        this.message = 'カラースイッチの色を変更しました';
+        this.emit();
+        return;
+      }
+      const other = occupiedByOther(this.model, x, y, { kind: 'colorSwitch' });
+      if (other) {
+        this.message = `${other}があるためスイッチを置けません`;
+        this.emit();
+        return;
+      }
+      this.pushHistory();
+      this.model.colorSwitches.push({ x, y, color: this.paintColor });
+      this.selection = { kind: 'colorSwitch', x, y };
+      this.message = 'カラースイッチを配置しました';
+      this.emit();
+      return;
+    }
+
+    if (tool === 'colorWall') {
+      const index = this.model.colorWalls.findIndex((candidate) => candidate.x === x && candidate.y === y);
+      if (index !== -1) {
+        if (this.model.colorWalls[index].color === this.paintColor) {
+          this.selection = { kind: 'colorWall', x, y };
+          this.emit();
+          return;
+        }
+        this.pushHistory();
+        this.model.colorWalls[index].color = this.paintColor;
+        this.selection = { kind: 'colorWall', x, y };
+        this.message = 'カラー壁の色を変更しました';
+        this.emit();
+        return;
+      }
+      const other = occupiedByOther(this.model, x, y, { kind: 'colorWall', x, y });
+      if (other) {
+        this.message = `${other}があるためカラー壁を置けません`;
+        this.emit();
+        return;
+      }
+      this.pushHistory();
+      this.model.colorWalls.push({ x, y, color: this.paintColor });
+      this.selection = { kind: 'colorWall', x, y };
+      this.message = 'カラー壁を配置しました';
+      this.emit();
+      return;
+    }
+
+    if (tool === 'laser') {
+      const existing = this.model.lasers.find((laser) => laser.x === x && laser.y === y);
+      if (existing) {
+        this.selection = { kind: 'laser', x, y };
+        this.emit();
+        return;
+      }
+      const other = occupiedByOther(this.model, x, y, { kind: 'laser', x, y });
+      if (other) {
+        this.message = `${other}があるためレーザーを置けません`;
+        this.emit();
+        return;
+      }
+      this.pushHistory();
+      const candidates = [
+        ['right', 22 - x],
+        ['left', x - 1],
+        ['down', 14 - y],
+        ['up', y - 1],
+      ];
+      const [direction, limit] = candidates.find(([, space]) => space >= 1) ?? ['right', 1];
+      const length = Math.max(1, Math.min(DEFAULT_LASER.length, limit));
+      this.model.lasers.push({ x, y, direction, length });
+      this.selection = { kind: 'laser', x, y };
+      this.message = 'レーザー発射装置を配置しました。向きと長さを調整できます';
+      this.emit();
+      return;
+    }
+
+    if (tool === 'magma') {
+      const existing = this.model.magma.find((tile) => tile.x === x && tile.y === y);
+      if (existing) {
+        this.selection = { kind: 'magma', x, y };
+        this.emit();
+        return;
+      }
+      const other = occupiedByOther(this.model, x, y, { kind: 'magma', x, y });
+      if (other) {
+        this.message = `${other}があるためマグマを置けません`;
+        this.emit();
+        return;
+      }
+      this.pushHistory();
+      this.model.magma.push({ x, y });
+      this.selection = { kind: 'magma', x, y };
+      this.message = 'マグマを配置しました';
       this.emit();
       return;
     }
@@ -238,11 +361,17 @@ export default class EditorStore {
     const wallKey = `${x},${y}`;
     const blockIndex = this.model.blocks.findIndex((block) => block.x === x && block.y === y);
     const itemIndex = this.model.items.findIndex((item) => item.x === x && item.y === y);
+    const colorSwitchIndex = this.model.colorSwitches.findIndex((colorSwitch) => colorSwitch.x === x && colorSwitch.y === y);
+    const colorWallIndex = this.model.colorWalls.findIndex((colorWall) => colorWall.x === x && colorWall.y === y);
+    const laserIndex = this.model.lasers.findIndex((laser) => laser.x === x && laser.y === y);
+    const magmaIndex = this.model.magma.findIndex((tile) => tile.x === x && tile.y === y);
     const hasWall = this.model.walls.has(wallKey);
     const hasGoalBlock = this.model.goalBlock?.x === x && this.model.goalBlock?.y === y;
     const hasGate = this.model.shortcutGate?.x === x && this.model.shortcutGate?.y === y;
 
-    if (!hasWall && blockIndex === -1 && itemIndex === -1 && !hasGoalBlock && !hasGate) {
+    if (!hasWall && blockIndex === -1 && itemIndex === -1 && colorSwitchIndex === -1
+      && colorWallIndex === -1 && laserIndex === -1 && magmaIndex === -1
+      && !hasGoalBlock && !hasGate) {
       this.message = '削除する要素がありません';
       this.emit();
       return;
@@ -252,6 +381,10 @@ export default class EditorStore {
     if (hasWall) this.model.walls.delete(wallKey);
     if (blockIndex !== -1) this.model.blocks.splice(blockIndex, 1);
     if (itemIndex !== -1) this.model.items.splice(itemIndex, 1);
+    if (colorSwitchIndex !== -1) this.model.colorSwitches.splice(colorSwitchIndex, 1);
+    if (colorWallIndex !== -1) this.model.colorWalls.splice(colorWallIndex, 1);
+    if (laserIndex !== -1) this.model.lasers.splice(laserIndex, 1);
+    if (magmaIndex !== -1) this.model.magma.splice(magmaIndex, 1);
     if (hasGoalBlock) this.model.goalBlock = null;
     if (hasGate) this.model.shortcutGate = null;
 
@@ -305,12 +438,79 @@ export default class EditorStore {
 
     const name = patch.name !== undefined ? String(patch.name) : block.name;
     const color = patch.color !== undefined ? String(patch.color) : block.color;
-    if (name === block.name && color === block.color) return;
+    const kind = patch.kind !== undefined ? String(patch.kind) : block.kind;
+    if (name === block.name && color === block.color && kind === block.kind) return;
 
     this.pushHistory();
     block.name = name;
     block.color = color;
+    block.kind = kind === 'colored' ? 'colored' : 'normal';
     this.emit();
+  }
+
+  setLaserProps(patch) {
+    if (this.selection?.kind !== 'laser') return;
+    const laser = this.model.lasers.find((candidate) => (
+      candidate.x === this.selection.x && candidate.y === this.selection.y
+    ));
+    if (!laser) return;
+
+    const direction = patch.direction !== undefined ? patch.direction : laser.direction;
+    let length = patch.length !== undefined ? Math.trunc(Number(patch.length)) : laser.length;
+    if (!['up', 'down', 'left', 'right'].includes(direction)) return;
+    const limits = {
+      up: laser.y - 1,
+      down: 14 - laser.y,
+      left: laser.x - 1,
+      right: 22 - laser.x,
+    };
+    length = Math.max(1, Math.min(21, length, Math.max(1, limits[direction])));
+
+    if (direction === laser.direction && length === laser.length) return;
+    this.pushHistory();
+    laser.direction = direction;
+    laser.length = length;
+    this.message = 'レーザーの向き・長さを変更しました';
+    this.emit();
+  }
+
+  setEntityColor(color) {
+    const selection = this.selection;
+    if (!selection) return;
+    const value = String(color);
+    let changed = false;
+
+    if (selection.kind === 'block') {
+      const block = findBlock(this.model, selection.id);
+      if (block && block.color !== value) {
+        this.pushHistory();
+        block.color = value;
+        changed = true;
+      }
+    } else if (selection.kind === 'colorSwitch') {
+      const colorSwitch = this.model.colorSwitches.find((candidate) => (
+        candidate.x === selection.x && candidate.y === selection.y
+      ));
+      if (colorSwitch && colorSwitch.color !== value) {
+        this.pushHistory();
+        colorSwitch.color = value;
+        changed = true;
+      }
+    } else if (selection.kind === 'colorWall') {
+      const colorWall = this.model.colorWalls.find((candidate) => (
+        candidate.x === selection.x && candidate.y === selection.y
+      ));
+      if (colorWall && colorWall.color !== value) {
+        this.pushHistory();
+        colorWall.color = value;
+        changed = true;
+      }
+    }
+
+    if (changed) {
+      this.message = '色を変更しました';
+      this.emit();
+    }
   }
 
   setFacing(facing) {
@@ -370,6 +570,50 @@ export default class EditorStore {
         }
         break;
       }
+      case 'colorSwitch': {
+        const colorSwitch = this.model.colorSwitches.find((candidate) => (
+          candidate.x === selection.x && candidate.y === selection.y
+        ));
+        if (colorSwitch) {
+          colorSwitch.x = x;
+          colorSwitch.y = y;
+          this.selection = { ...selection, x, y };
+        }
+        break;
+      }
+      case 'colorWall': {
+        const colorWall = this.model.colorWalls.find((candidate) => (
+          candidate.x === selection.x && candidate.y === selection.y
+        ));
+        if (colorWall) {
+          colorWall.x = x;
+          colorWall.y = y;
+          this.selection = { ...selection, x, y };
+        }
+        break;
+      }
+      case 'laser': {
+        const laser = this.model.lasers.find((candidate) => (
+          candidate.x === selection.x && candidate.y === selection.y
+        ));
+        if (laser) {
+          laser.x = x;
+          laser.y = y;
+          this.selection = { ...selection, x, y };
+        }
+        break;
+      }
+      case 'magma': {
+        const magma = this.model.magma.find((candidate) => (
+          candidate.x === selection.x && candidate.y === selection.y
+        ));
+        if (magma) {
+          magma.x = x;
+          magma.y = y;
+          this.selection = { ...selection, x, y };
+        }
+        break;
+      }
       case 'item': {
         const index = findItemIndex(this.model, selection.type, selection.x, selection.y);
         if (index !== -1) {
@@ -420,6 +664,22 @@ export default class EditorStore {
       if (index !== -1) this.model.items.splice(index, 1);
     } else if (this.selection.kind === 'wall') {
       this.model.walls.delete(`${this.selection.x},${this.selection.y}`);
+    } else if (this.selection.kind === 'colorSwitch') {
+      this.model.colorSwitches = this.model.colorSwitches.filter((colorSwitch) => !(
+        colorSwitch.x === this.selection.x && colorSwitch.y === this.selection.y
+      ));
+    } else if (this.selection.kind === 'colorWall') {
+      this.model.colorWalls = this.model.colorWalls.filter((colorWall) => !(
+        colorWall.x === this.selection.x && colorWall.y === this.selection.y
+      ));
+    } else if (this.selection.kind === 'laser') {
+      this.model.lasers = this.model.lasers.filter((laser) => !(
+        laser.x === this.selection.x && laser.y === this.selection.y
+      ));
+    } else if (this.selection.kind === 'magma') {
+      this.model.magma = this.model.magma.filter((tile) => !(
+        tile.x === this.selection.x && tile.y === this.selection.y
+      ));
     } else if (this.selection.kind === 'goalBlock') {
       this.model.goalBlock = null;
     } else if (this.selection.kind === 'gate') {

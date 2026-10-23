@@ -13,10 +13,21 @@ export const BLOCK_COLORS = [
   '#b09654',
 ];
 
+export const GIMMICK_COLORS = [
+  '#ff5e68',
+  '#4aa8ff',
+  '#70e1c1',
+  '#f3c969',
+  '#b98cff',
+  '#ff9f4a',
+];
+
 export const ITEM_LABELS = {
   skillPotion: 'スキルポーション',
   lifePotion: 'ライフポーション',
 };
+
+export const DEFAULT_LASER = Object.freeze({ direction: 'right', length: 5 });
 
 export function createBlankStage(number = 1) {
   return {
@@ -28,6 +39,10 @@ export function createBlankStage(number = 1) {
     walls: new Set(),
     items: [],
     blocks: [],
+    colorSwitches: [],
+    colorWalls: [],
+    lasers: [],
+    magma: [],
     goal: { x: 21, y: 7 },
     goalBlock: null,
     shortcutGate: null,
@@ -76,6 +91,50 @@ export function wallTilesToObstacles(walls) {
   return obstacles;
 }
 
+export function colorWallTilesToRects(tiles) {
+  const rows = new Map();
+  for (const tile of tiles) {
+    if (!isPlayableTile(tile.x, tile.y)) continue;
+    const key = `${tile.color.toLowerCase()}|${tile.y}`;
+    if (!rows.has(key)) rows.set(key, { color: tile.color, y: tile.y, columns: [] });
+    rows.get(key).columns.push(tile.x);
+  }
+
+  const rects = [];
+  const groups = [...rows.values()].sort((a, b) => (
+    a.y - b.y || a.color.localeCompare(b.color)
+  ));
+  for (const group of groups) {
+    const columns = [...new Set(group.columns)].sort((a, b) => a - b);
+    let start = columns[0];
+    let previous = columns[0];
+
+    for (let index = 1; index <= columns.length; index += 1) {
+      const current = columns[index];
+      if (current === previous + 1) {
+        previous = current;
+        continue;
+      }
+      rects.push({ x: start, y: group.y, width: previous - start + 1, height: 1, color: group.color });
+      start = current;
+      previous = current;
+    }
+  }
+  return rects;
+}
+
+export function colorWallRectsToTiles(rects) {
+  const tiles = [];
+  for (const rect of rects) {
+    for (let y = rect.y; y < rect.y + rect.height; y += 1) {
+      for (let x = rect.x; x < rect.x + rect.width; x += 1) {
+        tiles.push({ x, y, color: rect.color });
+      }
+    }
+  }
+  return tiles;
+}
+
 export function stageToModel(stage) {
   return {
     schemaVersion: stage.schemaVersion,
@@ -85,7 +144,11 @@ export function stageToModel(stage) {
     start: { ...stage.start },
     walls: obstaclesToWallTiles(stage.obstacles),
     items: stage.items.map((item) => ({ ...item })),
-    blocks: stage.blocks.map((block) => ({ ...block })),
+    blocks: stage.blocks.map((block) => ({ ...block, kind: block.kind ?? 'normal' })),
+    colorSwitches: stage.colorSwitches.map((colorSwitch) => ({ ...colorSwitch })),
+    colorWalls: colorWallRectsToTiles(stage.colorWalls),
+    lasers: stage.lasers.map((laser) => ({ ...laser })),
+    magma: stage.magma.map((tile) => ({ ...tile })),
     goal: { ...stage.goal },
     goalBlock: stage.goalBlock ? { ...stage.goalBlock } : null,
     shortcutGate: stage.shortcutGate ? { ...stage.shortcutGate } : null,
@@ -103,6 +166,10 @@ export function modelToStage(model) {
     obstacles: wallTilesToObstacles(model.walls),
     items: model.items.map((item) => ({ ...item })),
     blocks: model.blocks.map((block) => ({ ...block })),
+    colorSwitches: model.colorSwitches.map((colorSwitch) => ({ ...colorSwitch })),
+    colorWalls: colorWallTilesToRects(model.colorWalls),
+    lasers: model.lasers.map((laser) => ({ ...laser })),
+    magma: model.magma.map((tile) => ({ ...tile })),
     goal: { ...model.goal },
     goalBlock: model.goalBlock ? { ...model.goalBlock } : null,
     shortcutGate: model.shortcutGate ? { ...model.shortcutGate } : null,
@@ -117,6 +184,10 @@ export function snapshotModel(model) {
     walls: [...model.walls],
     items: model.items.map((item) => ({ ...item })),
     blocks: model.blocks.map((block) => ({ ...block })),
+    colorSwitches: model.colorSwitches.map((colorSwitch) => ({ ...colorSwitch })),
+    colorWalls: model.colorWalls.map((wall) => ({ ...wall })),
+    lasers: model.lasers.map((laser) => ({ ...laser })),
+    magma: model.magma.map((tile) => ({ ...tile })),
     goal: { ...model.goal },
     goalBlock: model.goalBlock ? { ...model.goalBlock } : null,
     shortcutGate: model.shortcutGate ? { ...model.shortcutGate } : null,
@@ -130,6 +201,10 @@ export function restoreSnapshot(snapshot) {
     walls: new Set(snapshot.walls),
     items: snapshot.items.map((item) => ({ ...item })),
     blocks: snapshot.blocks.map((block) => ({ ...block })),
+    colorSwitches: snapshot.colorSwitches.map((colorSwitch) => ({ ...colorSwitch })),
+    colorWalls: snapshot.colorWalls.map((wall) => ({ ...wall })),
+    lasers: snapshot.lasers.map((laser) => ({ ...laser })),
+    magma: snapshot.magma.map((tile) => ({ ...tile })),
     goal: { ...snapshot.goal },
     goalBlock: snapshot.goalBlock ? { ...snapshot.goalBlock } : null,
     shortcutGate: snapshot.shortcutGate ? { ...snapshot.shortcutGate } : null,
@@ -153,10 +228,23 @@ export function entityAt(model, x, y) {
   const block = model.blocks.find((candidate) => candidate.x === x && candidate.y === y);
   if (block) return { kind: 'block', id: block.id };
 
+  const colorSwitch = model.colorSwitches.find((candidate) => candidate.x === x && candidate.y === y);
+  if (colorSwitch) return { kind: 'colorSwitch', x, y };
+
   const item = model.items.find((candidate) => candidate.x === x && candidate.y === y);
   if (item) return { kind: 'item', type: item.type, x, y };
 
   if (model.walls.has(tileKey(x, y))) return { kind: 'wall', x, y };
+
+  const colorWall = model.colorWalls.find((candidate) => candidate.x === x && candidate.y === y);
+  if (colorWall) return { kind: 'colorWall', x, y };
+
+  const laser = model.lasers.find((candidate) => candidate.x === x && candidate.y === y);
+  if (laser) return { kind: 'laser', x, y };
+
+  const magma = model.magma.find((candidate) => candidate.x === x && candidate.y === y);
+  if (magma) return { kind: 'magma', x, y };
+
   return null;
 }
 
@@ -168,6 +256,10 @@ export function occupancyLabel(selection) {
     case 'goalBlock': return 'goalBlock';
     case 'gate': return 'ショートカットゲート';
     case 'block': return '木箱';
+    case 'colorSwitch': return 'カラースイッチ';
+    case 'colorWall': return 'カラー壁';
+    case 'laser': return 'レーザー発射装置';
+    case 'magma': return 'マグマ';
     case 'item': return ITEM_LABELS[selection.type] ?? 'アイテム';
     case 'wall': return '固定壁';
     default: return null;
@@ -199,6 +291,42 @@ export function occupiedByOther(model, x, y, selection) {
     }
   }
 
+  for (const colorSwitch of model.colorSwitches) {
+    const isSelected = selection?.kind === 'colorSwitch'
+      && selection.x === x
+      && selection.y === y;
+    if (colorSwitch.x === x && colorSwitch.y === y && !isSelected) {
+      return 'カラースイッチ';
+    }
+  }
+
+  for (const colorWall of model.colorWalls) {
+    const isSelected = selection?.kind === 'colorWall'
+      && selection.x === x
+      && selection.y === y;
+    if (colorWall.x === x && colorWall.y === y && !isSelected) {
+      return 'カラー壁';
+    }
+  }
+
+  for (const laser of model.lasers) {
+    const isSelected = selection?.kind === 'laser'
+      && selection.x === x
+      && selection.y === y;
+    if (laser.x === x && laser.y === y && !isSelected) {
+      return 'レーザー発射装置';
+    }
+  }
+
+  for (const magma of model.magma) {
+    const isSelected = selection?.kind === 'magma'
+      && selection.x === x
+      && selection.y === y;
+    if (magma.x === x && magma.y === y && !isSelected) {
+      return 'マグマ';
+    }
+  }
+
   for (const item of model.items) {
     const isSelectedItem = selection?.kind === 'item'
       && selection.type === item.type
@@ -225,6 +353,10 @@ export function selectionTile(model, selection) {
     }
     case 'item':
     case 'wall':
+    case 'colorSwitch':
+    case 'colorWall':
+    case 'laser':
+    case 'magma':
       return { x: selection.x, y: selection.y };
     default:
       return null;

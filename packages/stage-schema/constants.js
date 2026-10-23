@@ -10,6 +10,7 @@ export const PLAYABLE_MAX_Y = GRID_ROWS - 2;
 
 export const FACINGS = Object.freeze(['up', 'down', 'left', 'right']);
 export const ITEM_TYPES = Object.freeze(['skillPotion', 'lifePotion']);
+export const BLOCK_KINDS = Object.freeze(['normal', 'colored']);
 
 export const STAGE_FIELDS = Object.freeze([
   'schemaVersion',
@@ -20,6 +21,10 @@ export const STAGE_FIELDS = Object.freeze([
   'obstacles',
   'items',
   'blocks',
+  'colorSwitches',
+  'colorWalls',
+  'lasers',
+  'magma',
   'goal',
   'goalBlock',
   'shortcutGate',
@@ -29,8 +34,14 @@ export const STAGE_FIELDS = Object.freeze([
 export const START_FIELDS = Object.freeze(['x', 'y', 'facing']);
 export const OBSTACLE_FIELDS = Object.freeze(['x', 'y', 'width', 'height']);
 export const ITEM_FIELDS = Object.freeze(['type', 'x', 'y']);
-export const BLOCK_FIELDS = Object.freeze(['id', 'name', 'x', 'y', 'color']);
+export const BLOCK_FIELDS = Object.freeze(['id', 'name', 'kind', 'x', 'y', 'color']);
+export const COLOR_SWITCH_FIELDS = Object.freeze(['x', 'y', 'color']);
+export const COLOR_WALL_FIELDS = Object.freeze(['x', 'y', 'width', 'height', 'color']);
+export const LASER_FIELDS = Object.freeze(['x', 'y', 'direction', 'length']);
 export const TILE_FIELDS = Object.freeze(['x', 'y']);
+
+export const MIN_LASER_LENGTH = 1;
+export const MAX_LASER_LENGTH = 21;
 
 export const STAGE_ID_PATTERN = /^[a-z0-9][a-z0-9-]{2,63}$/;
 export const BLOCK_ID_PATTERN = /^[a-z0-9][a-z0-9-]{0,31}$/;
@@ -65,4 +76,8 @@ export function isBlockId(value) {
 
 export function isHexColor(value) {
   return typeof value === 'string' && HEX_COLOR_PATTERN.test(value);
+}
+
+export function normalizeColor(value) {
+  return typeof value === 'string' ? value.toLowerCase() : value;
 }

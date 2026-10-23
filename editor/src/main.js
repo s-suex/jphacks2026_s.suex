@@ -26,9 +26,24 @@ const TOOL_KEYS = {
   '8': 'block',
   '9': 'skillPotion',
   '0': 'lifePotion',
+  b: 'colorBlock',
+  s: 'switch',
+  w: 'colorWall',
+  l: 'laser',
+  m: 'magma',
 };
 
-const PAINT_TOOLS = new Set(['wall', 'erase', 'block', 'skillPotion', 'lifePotion']);
+const PAINT_TOOLS = new Set([
+  'wall',
+  'erase',
+  'block',
+  'colorBlock',
+  'switch',
+  'colorWall',
+  'magma',
+  'skillPotion',
+  'lifePotion',
+]);
 
 function element(id) {
   const found = document.getElementById(id);
@@ -64,7 +79,15 @@ const els = {
   fileName: element('file-name'),
   selectionLabel: element('selection-label'),
   blockName: element('block-name'),
+  blockKind: element('block-kind'),
   blockColor: element('block-color'),
+  paintColor: element('paint-color'),
+  entityColor: element('entity-color'),
+  entityColorLabel: element('entity-color-label'),
+  entityColorField: element('entity-color-field'),
+  laserFields: element('laser-fields'),
+  laserDirection: element('laser-direction'),
+  laserLength: element('laser-length'),
   facingSelect: element('facing-select'),
   validationSummary: element('validation-summary'),
   toolButtons: [...document.querySelectorAll('[data-tool]')],
@@ -167,6 +190,9 @@ function updateUI(state) {
   els.deleteButton.disabled = selection?.kind === 'start' || selection?.kind === 'goal';
   blockFields.hidden = selection?.kind !== 'block';
   facingField.hidden = selection?.kind !== 'start';
+  els.entityColorField.hidden = selection?.kind !== 'colorSwitch' && selection?.kind !== 'colorWall';
+  els.laserFields.hidden = selection?.kind !== 'laser';
+  if (document.activeElement !== els.paintColor) els.paintColor.value = state.paintColor;
 
   if (!selection) {
     els.selectionLabel.textContent = 'なにも選択されていません';
@@ -186,7 +212,30 @@ function updateUI(state) {
     const block = model.blocks.find((candidate) => candidate.id === selection.id);
     if (block) {
       if (document.activeElement !== els.blockName) els.blockName.value = block.name;
+      if (document.activeElement !== els.blockKind) els.blockKind.value = block.kind ?? 'normal';
       if (document.activeElement !== els.blockColor) els.blockColor.value = block.color;
+    }
+  }
+  if (selection?.kind === 'colorSwitch') {
+    const colorSwitch = model.colorSwitches.find((candidate) => (
+      candidate.x === selection.x && candidate.y === selection.y
+    ));
+    els.entityColorLabel.textContent = 'カラースイッチの色';
+    if (colorSwitch && document.activeElement !== els.entityColor) els.entityColor.value = colorSwitch.color;
+  } else if (selection?.kind === 'colorWall') {
+    const colorWall = model.colorWalls.find((candidate) => (
+      candidate.x === selection.x && candidate.y === selection.y
+    ));
+    els.entityColorLabel.textContent = 'カラー壁の色';
+    if (colorWall && document.activeElement !== els.entityColor) els.entityColor.value = colorWall.color;
+  }
+  if (selection?.kind === 'laser') {
+    const laser = model.lasers.find((candidate) => (
+      candidate.x === selection.x && candidate.y === selection.y
+    ));
+    if (laser) {
+      if (document.activeElement !== els.laserDirection) els.laserDirection.value = laser.direction;
+      if (document.activeElement !== els.laserLength) els.laserLength.value = laser.length;
     }
   }
   if (selection?.kind === 'start' && document.activeElement !== els.facingSelect) {
@@ -411,7 +460,12 @@ els.stageName.addEventListener('input', () => store.setMeta({ name: els.stageNam
 els.stageHint.addEventListener('input', () => store.setMeta({ hint: els.stageHint.value }));
 els.blockName.addEventListener('input', () => store.setBlockProps({ name: els.blockName.value }));
 els.blockName.addEventListener('blur', () => updateUI(store));
-els.blockColor.addEventListener('input', () => store.setBlockProps({ color: els.blockColor.value }));
+els.blockKind.addEventListener('change', () => store.setBlockProps({ kind: els.blockKind.value }));
+els.blockColor.addEventListener('input', () => store.setEntityColor(els.blockColor.value));
+els.paintColor.addEventListener('input', () => store.setPaintColor(els.paintColor.value));
+els.entityColor.addEventListener('input', () => store.setEntityColor(els.entityColor.value));
+els.laserDirection.addEventListener('change', () => store.setLaserProps({ direction: els.laserDirection.value }));
+els.laserLength.addEventListener('input', () => store.setLaserProps({ length: els.laserLength.value }));
 els.facingSelect.addEventListener('change', () => store.setFacing(els.facingSelect.value));
 
 function diagnosticText(diagnostics, limit = 8) {

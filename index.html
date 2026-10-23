@@ -9,20 +9,61 @@
     <script type="module" src="./src/main.js"></script>
   </head>
   <body>
-    <main class="game-shell">
+    <main id="home-screen" class="home-shell">
+      <section class="home-card" aria-labelledby="home-title">
+        <p class="eyebrow"><span class="eyebrow-dot"></span>KEYBOARD TRAINING • 2D DUNGEON</p>
+        <h1 id="home-title">ショートカット<span>・ダンジョン</span></h1>
+        <p class="home-lead">キーボードショートカットを使って、パズル迷路を攻略しよう。</p>
+
+        <div class="login-options" aria-label="プレイ方法を選択">
+          <button class="login-choice google-choice" type="button" disabled aria-describedby="google-note">
+            <span class="google-mark" aria-hidden="true">G</span>
+            Google でログイン
+            <span class="coming-soon">準備中</span>
+          </button>
+          <p id="google-note" class="option-note">ログインとセーブデータ同期は、Supabase連携後に利用できます。</p>
+
+          <button id="guest-play-button" class="login-choice guest-choice" type="button" aria-pressed="false">
+            <span aria-hidden="true">⌁</span>
+            ゲストでプレイ
+          </button>
+          <p class="option-note">すぐに遊べます。セーブデータ機能は今後追加予定です。</p>
+        </div>
+
+        <button id="start-game-button" class="start-game-button" type="button" disabled>
+          ゲームを開始する <span aria-hidden="true">→</span>
+        </button>
+        <p id="selection-status" class="selection-status" aria-live="polite">プレイ方法を選択してください</p>
+      </section>
+    </main>
+
+    <main id="game-screen" class="game-shell" hidden>
       <header class="page-heading">
-        <p class="eyebrow">KEYBOARD TRAINING • 2D DUNGEON</p>
-        <h1>ショートカット・ダンジョン</h1>
-        <p>キー操作で迷宮を進み、ショートカットを練習しよう。</p>
+        <div class="heading-copy">
+          <p class="eyebrow"><span class="eyebrow-dot"></span>KEYBOARD TRAINING • 2D DUNGEON</p>
+          <h1>ショートカット<span>・ダンジョン</span></h1>
+          <p class="page-lead">キー操作で迷宮を進み、ショートカットを身体で覚えよう。</p>
+        </div>
+        <div class="heading-badge" aria-hidden="true">
+          <span>CTRL</span>
+          <span>+</span>
+          <span>KEY</span>
+        </div>
       </header>
-      <canvas
-        id="game-canvas"
-        width="960"
-        height="640"
-        tabindex="0"
-        aria-label="矢印キーまたはWASDでプレイヤーを移動するダンジョンゲーム"
-      ></canvas>
-      <footer>矢印キー / WASD で移動　·　Ctrl/Cmd+C・V・Z などを入力して練習</footer>
+      <div class="canvas-frame">
+        <canvas
+          id="game-canvas"
+          width="960"
+          height="640"
+          tabindex="0"
+          aria-label="矢印キーまたはWASDでプレイヤーを移動するダンジョンゲーム"
+        ></canvas>
+      </div>
+      <footer>
+        <span class="footer-item"><span class="footer-key">矢印 / WASD</span>移動</span>
+        <span class="footer-item"><span class="footer-key">Ctrl + C / V / X / Z</span>ショートカット</span>
+        <span class="footer-item"><span class="footer-key">Enter / R</span>リトライ</span>
+      </footer>
     </main>
   </body>
 </html>
